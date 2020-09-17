@@ -5,7 +5,7 @@
 
 from selenium import webdriver
 import time
-
+import requests
 from pyquery import PyQuery as pq
 
 # 由于该网站是javascript来异步加载的，而且requests不能正常获取，这里我们使用selenium爬取
@@ -13,6 +13,8 @@ from pyquery import PyQuery as pq
 url = 'http://ccgp-shaanxi.gov.cn/notice/list.do?noticetype=3&province=province'
 shuru = '宝鸡市'
 shuru2 = input('请输入上述城市中要筛选的区域名：\n （如不需要筛选则直接敲击回车键开始抓取）')
+
+
 # 打开谷歌浏览器
 brower = webdriver.Chrome()
 # 打开采购信息的网页
@@ -21,7 +23,7 @@ brower.get(url)
 brower.find_element_by_link_text(shuru).click()
 # 这块由于代码自动操作太快，有时出现内容没更新的情况，所以我们等待两秒
 time.sleep(2)
-html = brower.page_source
+
 
 # 该函数完成单页内容的采集输出
 def get_onepage(html):
@@ -34,10 +36,36 @@ def get_onepage(html):
             if b == a:  # 对比分析，如果和我们输入的区域名字相同，则打印出来
                 print(list('td a ').text())
                 print(list('td a ').attr('href'))
+                print(list('td:last-child').text())
         else:
             print(list('td a ').text())
             print(list('td a ').attr('href'))
+            print(list('td:last-child').text())
 
 # 上面完成单页信息的采集，现在进行前十页的信息采集。
+def get_page():
+    for i in range(1,11):
 
-get_onepage(html)
+        print('开始抓取第%s页'%i)
+        # 由于第一页不用点击操作我们从第二页开始进行点击操作
+        if i > 1:
+            brower.find_element_by_link_text(str(i)).click()
+            # 这块停顿两秒，让页面内容顺利加载出来
+            time.sleep(2)
+        html = brower.page_source
+        get_onepage(html)
+        print('抓取第%s页完毕'%i)
+
+    brower.close()
+
+# 该函数完成对详情页的内容抓取下载打包操作等
+def get_content(title,url,date):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.25 Safari/537.36 Core/1.70.3741.400 QQBrowser/',
+    }
+    html = requests.get(url,headers=headers).text
+    content = pq(html)
+    content = content('.inner-Box').text()  # 获取到详情页的文本信息
+
+
+get_page()
