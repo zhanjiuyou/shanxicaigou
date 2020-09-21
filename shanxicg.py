@@ -4,23 +4,27 @@
 # 我的个人博客：https://jiaokangyang.com
 
 from selenium import webdriver
+
 import time
-import requests
 from pyquery import PyQuery as pq
+from docx import *
 
 # 由于该网站是javascript来异步加载的，而且requests不能正常获取，这里我们使用selenium爬取
 
 url = 'http://ccgp-shaanxi.gov.cn/notice/list.do?noticetype=3&province=province'
-shuru = '宝鸡市'
-shuru2 = input('请输入上述城市中要筛选的区域名：\n （如不需要筛选则直接敲击回车键开始抓取）')
-
+shuru = input('请输入要爬取的区域名称，确保在网站的范围内：')
+shuru2 = input('请输入上述城市中要筛选的区域名：\n(如不需要筛选则直接敲击回车键开始抓取)\n')
+# 创建一个空文档，用于后面的文档保存
+document = Document()
 
 # 打开谷歌浏览器
 brower = webdriver.Chrome()
 # 打开采购信息的网页
+
 brower.get(url)
 # 打开网页后，点击对应城市的标签，然后异步加载的内容进行加载。
-brower.find_element_by_link_text(shuru).click()
+if shuru != '':
+    brower.find_element_by_link_text(shuru).click()
 # 这块由于代码自动操作太快，有时出现内容没更新的情况，所以我们等待两秒
 time.sleep(2)
 
@@ -34,17 +38,19 @@ def get_onepage(html):
         if shuru2 != '':
             b = list('td:nth-child(2)').text() # 使用pyquery的伪类用法查找第二个元素内的名字
             if b == a:  # 对比分析，如果和我们输入的区域名字相同，则打印出来
-                print(list('td a ').text())
-                print(list('td a ').attr('href'))
-                print(list('td:last-child').text())
+                title = list('td a ').text()
+                url = list('td a ').attr('href')
+                date = list('td:last-child').text()
+                get_word(title,url,date)
         else:
-            print(list('td a ').text())
-            print(list('td a ').attr('href'))
-            print(list('td:last-child').text())
+            title = list('td a ').text()
+            url = list('td a ').attr('href')
+            date = list('td:last-child').text()
+            get_word(title,url,date)
 
-# 上面完成单页信息的采集，现在进行前十页的信息采集。
+# 上面完成单页信息的采集，现在进行前五页的信息采集。
 def get_page():
-    for i in range(1,11):
+    for i in range(1,6):
 
         print('开始抓取第%s页'%i)
         # 由于第一页不用点击操作我们从第二页开始进行点击操作
@@ -58,14 +64,23 @@ def get_page():
 
     brower.close()
 
-# 该函数完成对详情页的内容抓取下载打包操作等
-def get_content(title,url,date):
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.25 Safari/537.36 Core/1.70.3741.400 QQBrowser/',
-    }
-    html = requests.get(url,headers=headers).text
-    content = pq(html)
-    content = content('.inner-Box').text()  # 获取到详情页的文本信息
+# 该函数将获取到的内容写入到word文件中
+
+def get_word(title,url,date):
+
+    document.add_paragraph(title)
+    document.add_paragraph('网址：' + url)
+    document.add_paragraph(date + '\n')
 
 
-get_page()
+def execute():
+    # 给文档添加标题
+    header = '{}{}招标项目清单'.format(shuru,shuru2)
+    document.add_heading(header,level=0)
+    # 运行爬虫程序
+    get_page()
+    # 将爬到的数据保存
+    document.save('{}{}招标清单.docx'.format(shuru,shuru2))
+
+
+execute()
